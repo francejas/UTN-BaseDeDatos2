@@ -165,4 +165,42 @@ CALL clasificarMedico(4);
 */
 
 -- 5
+/*
+DELIMITER //
 
+CREATE PROCEDURE registrarTurno (
+	IN p_paciente_id INT,
+    IN p_medico_id INT,
+    IN p_fecha DATE,
+    IN p_motivo VARCHAR(100),
+    OUT p_turno_id INT
+)
+BEGIN
+	DECLARE v_turno_id INT;
+    
+  INSERT INTO turnos (paciente_id, medico_id, fecha, motivo, estado) 
+VALUES (p_paciente_id, p_medico_id, p_fecha, p_motivo, 'Pendiente'); 
+    
+    SET p_turno_id=LAST_INSERT_ID();
+    
+    SELECT CONCAT('Turno registrado con exito. El ID asignado es: ', p_turno_id);
+    
+END //
+
+DELIMITER ;
+
+-- Llamamos al SP para el paciente 1 y el médico 2. El último parámetro es nuestra variable vacía.
+CALL registrarTurno(1, 2, '2026-04-15', 'Dolor de espalda', @id_del_nuevo_turno);
+
+-- Si querés comprobar qué quedó guardado en la variable (además del mensaje que ya tira el SP):
+SELECT @id_del_nuevo_turno AS ID_Generado;
+
+DROP PROCEDURE registrarTurno;
+*/
+
+
+-- 6
+
+DELIMITER //
+
+CREATE PROCEDURE 
