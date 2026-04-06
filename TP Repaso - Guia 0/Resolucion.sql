@@ -200,7 +200,84 @@ DROP PROCEDURE registrarTurno;
 
 
 -- 6
+/*
+DELIMITER //
+
+CREATE PROCEDURE cancelarTurno (
+	IN p_turno_id INT,
+    OUT p_filas_afectadas INT
+)
+BEGIN
+    -- Validamos si existe y si está pendiente usando EXISTS
+    IF EXISTS (SELECT 1 FROM turnos WHERE turno_id = p_turno_id AND estado = 'Pendiente') THEN
+		
+        UPDATE turnos 
+        SET estado = 'Cancelado' 
+        WHERE turno_id = p_turno_id;
+        
+        -- Guardamos la cantidad de filas en tu parámetro OUT (ROW_COUNT va sin parámetros adentro)
+        SET p_filas_afectadas = ROW_COUNT();
+        
+        -- Mostramos el mensaje
+        SELECT CONCAT('Turno id: ', p_turno_id, ' CANCELADO. Filas afectadas: ', p_filas_afectadas) AS Mensaje;
+        
+	ELSE
+		-- Si no existe o no estaba pendiente, no modificamos nada y avisamos
+		SELECT 'Turno inexistente o con estado cancelado o confirmado' AS Mensaje;
+        SET p_filas_afectadas = 0; -- Por las dudas, lo dejamos en 0
+	END IF;
+
+END //
+
+DELIMITER ;
+    
+CALL cancelarTurno(1, @filas);
+*/
+
+-- 7
 
 DELIMITER //
 
-CREATE PROCEDURE 
+CREATE PROCEDURE buscarTurnosPorMedico(
+	IN p_medico_id INT,
+	IN p_fecha_desde DATE,
+	IN p_fecha_hasta DATE
+)
+BEGIN
+    IF EXISTS (SELECT 1 FROM medicos WHERE medico_id = p_medico_id) THEN
+	
+        SELECT
+            p.nombre AS NombrePaciente,
+            t.fecha AS FechaTurno,
+            t.motivo AS Motivo,
+            DATEDIFF(t.fecha, CURDATE()) AS DiasRestantes 
+        FROM turnos t
+        INNER JOIN pacientes p
+        ON t.paciente_id = p.paciente_id
+        WHERE t.estado = 'Pendiente' 
+          AND t.medico_id = p_medico_id 
+          AND t.fecha BETWEEN p_fecha_desde AND p_fecha_hasta 
+        ORDER BY t.fecha ASC; 
+        
+    ELSE
+
+        SELECT 'Error: El médico ingresado no existe' AS Mensaje;
+    END IF;
+
+END //
+
+DELIMITER ;
+
+
+-- Prueba 1: Un médico que existe y tiene turnos en este mes (El Médico 1)
+CALL buscarTurnosPorMedico(1, '2026-04-01', '2026-04-30');
+
+-- Prueba 2: Un médico que existe, pero buscamos en un rango de fechas donde no tiene turnos (Ej: el mes que viene)
+CALL buscarTurnosPorMedico(1, '2026-05-01', '2026-05-31');
+
+-- Prueba 3: Un médico que directamente NO existe (Para probar que funcione tu IF/ELSE)
+CALL buscarTurnosPorMedico(99, '2026-04-01', '2026-04-30');
+    
+
+
+
