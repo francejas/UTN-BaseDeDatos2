@@ -235,7 +235,7 @@ CALL cancelarTurno(1, @filas);
 */
 
 -- 7
-
+/*
 DELIMITER //
 
 CREATE PROCEDURE buscarTurnosPorMedico(
@@ -278,6 +278,66 @@ CALL buscarTurnosPorMedico(1, '2026-05-01', '2026-05-31');
 -- Prueba 3: Un médico que directamente NO existe (Para probar que funcione tu IF/ELSE)
 CALL buscarTurnosPorMedico(99, '2026-04-01', '2026-04-30');
     
+*/
+
+-- 8
+DELIMITER //
+
+CREATE PROCEDURE resumenMedico(
+	IN p_medico_id INT
+)
+BEGIN
+    
+	DECLARE v_total_turnos INT;
+    DECLARE v_pendientes INT;
+    DECLARE v_total_cancelados INT;
+    DECLARE v_fecha_proximo_turno DATE;
+	
+    -- 2. Consulta y asignación
+    SELECT
+		COUNT(turno_id),
+        SUM(IF(estado = 'Pendiente', 1, 0)),
+        SUM(IF(estado = 'Cancelado', 1, 0)), 
+        MIN(IF(estado = 'Pendiente' AND fecha >= CURDATE(), fecha, NULL)) 
+    INTO 
+        v_total_turnos,      
+        v_pendientes,        
+        v_total_cancelados,  
+        v_fecha_proximo_turno
+    FROM 
+		turnos
+	WHERE medico_id = p_medico_id; 
+        
+	
+	IF v_total_turnos = 0 THEN
+		SELECT 'El médico no tiene ningún turno registrado' AS Mensaje; 
+	ELSE
+		SELECT
+			v_total_turnos AS Turnos_totales,
+            v_pendientes AS Turnos_pendientes, 
+            v_total_cancelados AS Turnos_totales_cancelados,
+            IFNULL(v_fecha_proximo_turno, 'Sin turnos pendientes') AS Proximo_turno; 
+	END IF;
+
+END //
+
+DELIMITER ;
+
+-- Prueba 1: Un médico con turnos pendientes a futuro (Médico 1)
+-- Debería mostrarte totales, pendientes y la fecha de su próximo turno.
+CALL resumenMedico(1);
+
+-- Prueba 2: Un médico que solo tiene turnos cancelados (Médico 4)
+-- Debería mostrarte 1 total, 1 cancelado, 0 pendientes y decir 'Sin turnos pendientes'.
+CALL resumenMedico(4);
+
+-- Prueba 3: Un médico que solo tiene turnos ya atendidos en el pasado (Médico 3)
+-- Debería mostrarte 1 total, 0 pendientes, 0 cancelados y decir 'Sin turnos pendientes'.
+CALL resumenMedico(3);
+
+-- Prueba 4: Un médico que directamente NO existe en los turnos (Ej: ID 99)
+-- Debería caer en tu IF y mostrar el mensaje: 'El médico no tiene ningún turno registrado'.
+CALL resumenMedico(99);
 
 
 
