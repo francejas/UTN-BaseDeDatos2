@@ -281,6 +281,7 @@ CALL buscarTurnosPorMedico(99, '2026-04-01', '2026-04-30');
 */
 
 -- 8
+/*
 DELIMITER //
 
 CREATE PROCEDURE resumenMedico(
@@ -338,6 +339,119 @@ CALL resumenMedico(3);
 -- Prueba 4: Un médico que directamente NO existe en los turnos (Ej: ID 99)
 -- Debería caer en tu IF y mostrar el mensaje: 'El médico no tiene ningún turno registrado'.
 CALL resumenMedico(99);
+
+*/
+
+-- 9
+/*
+DELIMITER //
+
+CREATE PROCEDURE registrarTurnoCompleto(
+	IN p_paciente_id INT,
+    IN p_medico_id INT,
+    IN p_fecha DATE,
+    IN p_motivo VARCHAR(100),
+    
+    OUT p_turno_id INT,
+    OUT p_mensaje VARCHAR(100)
+)
+BEGIN
+	CASE
+		WHEN NOT EXISTS (SELECT 1 FROM pacientes WHERE p_paciente_id = paciente_id) THEN 
+            SET p_mensaje = 'El paciente no existe';
+            
+        WHEN NOT EXISTS (SELECT 1 FROM medicos WHERE p_medico_id = medico_id) THEN 
+            SET p_mensaje = 'El medico no existe';
+            
+        WHEN (p_fecha < CURDATE()) THEN 
+            SET p_mensaje = 'Error: fecha invalida';
+            
+        WHEN (SELECT COUNT(turno_id) FROM turnos WHERE medico_id = p_medico_id AND fecha = p_fecha AND estado = 'Pendiente') >= 1 THEN 
+            SET p_mensaje = 'Ya tiene un turno pendiente para esa fecha';
+            
+        ELSE
+			INSERT INTO turnos (paciente_id, medico_id, fecha, motivo, estado)
+				VALUES (p_paciente_id, p_medico_id, p_fecha, IFNULL(p_motivo, 'Sin especificar'), 'Pendiente');
+                
+            SET p_turno_id = LAST_INSERT_ID();
+            SET p_mensaje = CONCAT('Turno registrado con exito, ID: ', p_turno_id);
+	END CASE;
+        
+	SELECT p_mensaje AS Mensaje;
+	
+END //
+    
+DELIMITER ;
+
+-- Prueba 1: Falla porque el paciente no existe (ID 99)
+CALL registrarTurnoCompleto(99, 1, DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'Consulta', @id, @msj);
+
+-- Prueba 2: Falla porque el médico no existe (ID 99)
+CALL registrarTurnoCompleto(1, 99, DATE_ADD(CURDATE(), INTERVAL 5 DAY), 'Consulta', @id, @msj);
+
+-- Prueba 3: Falla porque la fecha es en el pasado
+CALL registrarTurnoCompleto(1, 1, '2020-01-01', 'Consulta', @id, @msj);
+
+-- Prueba 4: ¡Éxito! Todo correcto y sin motivo (prueba el IFNULL)
+-- Ponemos una fecha lejana para asegurarnos de que no choque con los datos iniciales
+CALL registrarTurnoCompleto(1, 1, '2026-12-15', NULL, @id, @msj);
+
+-- Prueba 5: Falla por límite de turnos. 
+-- Le pasamos EXACTAMENTE el mismo médico y la misma fecha que en la Prueba 4.
+CALL registrarTurnoCompleto(2, 1, '2026-12-15', 'Dolor de rodilla', @id, @msj);
+
+*/
+
+-- 10
+
+DELIMITER // 
+
+CREATE PROCEDURE gestionarPaciente(
+	IN p_paciente_id INT,
+    IN p_accion VARCHAR(100),
+    IN p_nuevo_nombre VARCHAR(100),
+    INOUT p_mensaje VARCHAR(200) 
+)
+BEGIN
+	CASE
+		WHEN NOT EXISTS (SELECT 1 FROM pacientes WHERE paciente_id = p_paciente_id) THEN 
+			SET p_mensaje = CONCAT(p_mensaje, 'El paciente no existe.');
+            
+        WHEN p_accion = 'ACTUALIZAR' THEN 
+			UPDATE pacientes 
+			SET nombre = p_nuevo_nombre 
+            WHERE paciente_id = p_paciente_id;
+			
+            SET p_mensaje = CONCAT(p_mensaje, 'Nombre del paciente actualizado a "', p_nuevo_nombre, '".');
+		
+        WHEN p_accion = 'ELIMINAR' THEN
+			DELETE FROM pacientes
+            WHERE paciente_id = p_paciente_id;
+            
+            SET p_mensaje = CONCAT(p_mensaje, 'Paciente ID ', p_paciente_id, ' eliminado. Filas afectadas: ', ROW_COUNT());
+		
+        ELSE
+			SET p_mensaje = CONCAT(p_mensaje, 'Accion no reconocida.');
+	END CASE;
+
+    SELECT p_mensaje AS Mensaje;
+
+END //
+
+DELIMITER ;
+
+
+-- 1. Probamos ACTUALIZAR (Paciente 1)
+SET @mi_prefijo = 'Resultado: ';
+CALL gestionarPaciente(1, 'ACTUALIZAR', 'Juan Perez Modificado', @mi_prefijo);
+
+-- 2. Probamos ELIMINAR (Paciente 2). Le pasamos NULL al nombre porque no se usa.
+SET @mi_prefijo = 'Atención: ';
+CALL gestionarPaciente(2, 'ELIMINAR', NULL, @mi_prefijo);
+
+-- 3. Probamos un error (Paciente 99 que no existe)
+SET @mi_prefijo = 'Aviso del sistema - ';
+CALL gestionarPaciente(99, 'ACTUALIZAR', 'Falso', @mi_prefijo);
 
 
 
