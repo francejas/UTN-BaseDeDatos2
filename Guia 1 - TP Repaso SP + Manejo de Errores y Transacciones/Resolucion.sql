@@ -110,7 +110,7 @@ CREATE PROCEDURE insertarActividad(
     IN p_actividad VARCHAR(50)
 )
 BEGIN 
-    -- Handler que ataja cualquier error crítico (como la violación de clave foránea)
+   
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         SELECT 'Error: El socio o el plan ingresado no existen.' AS Aviso;
@@ -207,13 +207,98 @@ END //
 DELIMITER ;
 	
 
-
 -- 8
 
+DELIMITER //
 
-
-
+CREATE PROCEDURE actualizarPlanYRegistrarActividad(
+	IN p_id_plan INT,
+    IN p_nuevo_precio DECIMAL(10,2), 
+    IN p_id_socio INT, 
+    IN p_actividad VARCHAR(50)
+)
+BEGIN
+	DECLARE v_id_plan INT;
+    DECLARE v_id_socio INT;
+    
+	DECLARE EXIT HANDLER FOR NOT FOUND
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error: socio o plan no encontrado.' AS Aviso;
+    END;
 	
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error: ocurrio un error en la operacion.' AS Aviso;
+    END;
+
+    START TRANSACTION;
+
+    SELECT id_plan INTO v_id_plan FROM planes WHERE id_plan = p_id_plan;
+    SELECT id_socio INTO v_id_socio FROM socios WHERE id_socio = p_id_socio;
+    
+    UPDATE planes SET precio = p_nuevo_precio WHERE id_plan = v_id_plan;
+    
+    INSERT INTO actividades (id_socio, id_plan, fecha, actividad) 
+    VALUES (v_id_socio, v_id_plan, CURDATE(), p_actividad);
+
+    COMMIT;
+    SELECT 'Operacion exitosa.' AS Aviso;
+
+END //
+
+DELIMITER ;
+		
+CALL actualizarPlanYRegistrarActividad(1, 75.50, 1, 'Spinning');		
+CALL actualizarPlanYRegistrarActividad(1, 80.00, 99, 'Natación');
+    
+ 
+-- 9
+
+DELIMITER //
+
+CREATE PROCEDURE eliminarSocioYActividades(
+	IN p_id_socio INT
+)
+BEGIN
+    DECLARE v_existe INT;
+
+    DECLARE EXIT HANDLER FOR NOT FOUND
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error: El socio no existe.' AS Aviso;
+    END;
+
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error inesperado durante la eliminacion.' AS Aviso;
+    END;
+	
+    START TRANSACTION;
+
+    SELECT id_socio INTO v_existe FROM socios WHERE id_socio = p_id_socio;
+
+    DELETE FROM actividades WHERE id_socio = p_id_socio;
+    DELETE FROM socios WHERE id_socio = p_id_socio;
+    
+    COMMIT;
+    SELECT 'Operacion exitosa. Socio y actividades eliminados.' AS Aviso;
+
+END //
+
+DELIMITER ;
+
+-- Falla porque el socio 999 no existe (Atrapa el NOT FOUND)
+CALL eliminarSocioYActividades(999);
+
+-- Éxito total. Borra a María (Socio 2) y sus actividades.
+CALL eliminarSocioYActividades(2); 
+
+-- Si tirás estos SELECT, vas a ver que el socio 2 desapareció de ambos lados
+SELECT * FROM socios;
+SELECT * FROM actividades;	
     
 
 
