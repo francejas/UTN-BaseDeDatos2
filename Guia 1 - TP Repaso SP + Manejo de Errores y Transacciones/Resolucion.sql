@@ -72,7 +72,149 @@ CALL seleccionarRegistroInexistente(99999999);
 
 -- 4
 
+DELIMITER //
 
+CREATE PROCEDURE manejoCombinado()
+BEGIN
+	DECLARE CONTINUE HANDLER FOR SQLEXCEPTION
+    BEGIN
+		SELECT 'Error atrapado: Quisiste insertar en una tabla inexistente' AS Aviso_1;
+	END;
+    
+	DECLARE CONTINUE HANDLER FOR SQLWARNING
+    BEGIN
+		SELECT 'Advertencia atrapada: La tabla ya existe' AS Aviso_2;
+	END;
+	
+    INSERT INTO tabla_no_existe (columna) VALUES ('valor');
+    SELECT 'Paso 1 ejecutado' AS Mensaje_1; 
+    
+    CREATE TABLE IF NOT EXISTS ejemplo_tabla(
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        nombre VARCHAR(100)
+    );
+    SELECT 'Paso 2 ejecutado. Fin del SP.' AS Mensaje_2;
+
+END //
+
+DELIMITER ;
+
+
+-- 5
+
+DELIMITER //
+
+CREATE PROCEDURE insertarActividad(
+	IN p_id_socio INT,
+    IN p_id_plan INT,
+    IN p_actividad VARCHAR(50)
+)
+BEGIN 
+    -- Handler que ataja cualquier error crítico (como la violación de clave foránea)
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        SELECT 'Error: El socio o el plan ingresado no existen.' AS Aviso;
+    END;
+	
+    -- Intentamos hacer el insert directamente
+    INSERT INTO actividades (id_socio, id_plan, actividad) 
+    VALUES (p_id_socio, p_id_plan, CURDATE(), p_actividad);
+    
+    
+    SELECT 'Operacion exitosa.' AS Aviso;
+END //
+
+DELIMITER ;
+
+-- PRUEBA DE ÉXITO: 
+-- Usamos el socio 1 y el plan 1 (que sabemos que existen en la base de datos)
+CALL insertarActividad(1, 1, 'Yoga');
+
+-- PRUEBA DE FALLA (ID SOCIO INEXISTENTE): 
+-- Usamos el socio 99 (que NO existe). El motor de MySQL choca con la clave foránea y salta tu Handler.
+CALL insertarActividad(99, 1, 'Crossfit');
+
+-- PRUEBA DE FALLA (ID PLAN INEXISTENTE): 
+-- Usamos el socio 1 (existe) pero el plan 88 (que NO existe). También salta el Handler.
+CALL insertarActividad(1, 999,'Pilates');
+	
+-- 6
+
+DELIMITER //
+
+CREATE PROCEDURE seleccionarSocio(
+	IN p_id_socio INT
+)
+BEGIN
+	DECLARE v_nombre VARCHAR(100);
+    
+	DECLARE EXIT HANDLER FOR NOT FOUND
+		BEGIN
+			SELECT 'Error: socio no encontrado.' AS Aviso;
+		END;
+	
+    
+    SELECT nombre INTO v_nombre FROM socios WHERE id_socio = p_id_socio;
+    
+    
+    SELECT CONCAT('Se encontro al socio ', v_nombre) AS Mensaje;
+
+END //
+
+DELIMITER ;
+    
+CALL seleccionarSocio(1);
+CALL seleccionarSocio(99);
+
+-- 7
+DELIMITER //
+
+CREATE PROCEDURE registrarSocioConPlan(
+	IN p_nombre VARCHAR(50),
+    IN p_apellido VARCHAR(50),
+    IN p_fecha_nacimiento DATE,
+    IN p_direccion VARCHAR(100),
+    IN p_telefono VARCHAR(20),  
+    IN p_id_plan INT,
+    IN p_actividad VARCHAR(50)
+)
+BEGIN
+    DECLARE v_nuevo_socio INT;
+
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+        ROLLBACK;
+        SELECT 'Error inesperado: operacion cancelada.' AS Aviso;
+    END;
+	
+    START TRANSACTION;
+	
+   
+    INSERT INTO socios (nombre, apellido, fecha_nacimiento, direccion, telefono) 
+    VALUES (p_nombre, p_apellido, p_fecha_nacimiento, p_direccion, p_telefono);
+    
+    SET v_nuevo_socio = LAST_INSERT_ID();
+    
+    INSERT INTO actividades (id_socio, id_plan, fecha, actividad) 
+    VALUES (v_nuevo_socio, p_id_plan, CURDATE(), p_actividad);
+    
+    COMMIT;
+    
+    SELECT 'Socio y actividad registrados con exito.' AS Aviso;
+
+END //
+
+DELIMITER ;
+	
+
+
+-- 8
+
+
+
+
+	
+    
 
 
 

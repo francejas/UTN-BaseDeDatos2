@@ -1,5 +1,6 @@
-create database tp_sp_manejadores;
-use tp_sp_manejadores;
+DROP DATABASE IF EXISTS tp_sp_manejadores;
+CREATE DATABASE tp_sp_manejadores;
+USE tp_sp_manejadores;
 
 CREATE TABLE ejemplo_tabla (
     id INT AUTO_INCREMENT PRIMARY KEY,
@@ -23,10 +24,13 @@ CREATE TABLE planes (
     servicios TEXT
 );
 
+-- ¡Acá está la tabla corregida según el DER!
 CREATE TABLE actividades (
     id_actividad INT AUTO_INCREMENT PRIMARY KEY,
     id_socio INT,
     id_plan INT,
+    fecha DATE,
+    actividad VARCHAR(50),
     FOREIGN KEY (id_socio) REFERENCES socios(id_socio),
     FOREIGN KEY (id_plan) REFERENCES planes(id_plan)
 );
@@ -46,11 +50,11 @@ VALUES
 ('Plan Básico', 30, 50.00, 'Acceso a gimnasio'),
 ('Plan Premium', 90, 120.00, 'Acceso a gimnasio + clases dirigidas');
 
--- Insertar datos en actividades
-INSERT INTO actividades (id_socio, id_plan) 
+-- Insertar datos en actividades (Actualizado con las nuevas columnas)
+INSERT INTO actividades (id_socio, id_plan, fecha, actividad) 
 VALUES 
-(1, 1),
-(2, 2);
+(1, 1, '2026-04-10', 'Musculación'),
+(2, 2, '2026-04-11', 'Zumba');
 
 -- Guardar el sql_mode actual
 SET @old_sql_mode = @@sql_mode;
