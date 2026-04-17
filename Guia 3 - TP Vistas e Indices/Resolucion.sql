@@ -43,3 +43,36 @@ JOIN Productos pr ON pr.producto_id = dp.producto_id
 GROUP BY DATE_FORMAT(p.fecha_pedido, '%Y-%m');
 
 -- 6
+CREATE VIEW productos_electronicos AS
+SELECT * FROM Productos 
+WHERE categoria = 'Electrónicos';
+
+CREATE VIEW ventas_electronicos AS
+SELECT 
+    dp.detalle_id, 
+    dp.pedido_id, 
+    pe.producto_id, 
+    pe.nombre_producto, 
+    pe.categoria,
+    dp.cantidad
+FROM productos_electronicos pe
+JOIN Detalle_Pedido dp ON dp.producto_id = pe.producto_id
+WITH LOCAL CHECK OPTION;
+
+-- 7
+CREATE VIEW productos_electronicos AS
+SELECT * FROM Productos 
+WHERE categoria = 'Electrónicos';
+
+CREATE VIEW ventas_electronicos AS
+SELECT 
+    dp.detalle_id, 
+    dp.pedido_id, 
+    pe.producto_id, 
+    pe.nombre_producto, 
+    pe.categoria,
+    dp.cantidad
+FROM productos_electronicos pe
+JOIN Detalle_Pedido dp ON dp.producto_id = pe.producto_id
+WITH CASCADED CHECK OPTION;
+
