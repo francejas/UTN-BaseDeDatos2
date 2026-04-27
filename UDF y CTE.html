@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>MySQL: UDFs y CTE - Guía completa</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #f1f5f9;
+            color: #0f172a;
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 1280px;
+            margin: 0 auto;
+            background-color: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.1);
+            overflow: hidden;
+            padding: 2rem 2rem 3rem 2rem;
+        }
+        @media (max-width: 700px) {
+            .container {
+                padding: 1.5rem;
+            }
+            body {
+                padding: 1rem 0.5rem;
+            }
+        }
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #0c4a6e;
+            margin-bottom: 0.5rem;
+            border-left: 5px solid #2c6e9e;
+            padding-left: 1rem;
+        }
+        .subhead {
+            color: #334155;
+            margin-bottom: 2rem;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 0.75rem;
+            font-size: 1rem;
+        }
+        h2 {
+            font-size: 1.7rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            font-weight: 600;
+            color: #0c4a6e;
+            border-left: 4px solid #3b82f6;
+            padding-left: 1rem;
+        }
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            font-weight: 600;
+            color: #1e293b;
+        }
+        h4 {
+            font-weight: 600;
+            font-size: 1.2rem;
+            margin: 1rem 0 0.5rem;
+            color: #2c3e66;
+        }
+        p {
+            margin-bottom: 1rem;
+            text-align: justify;
+        }
+        .code-block {
+            background-color: #0f172a;
+            color: #e2e8f0;
+            padding: 1rem 1.2rem;
+            border-radius: 1rem;
+            overflow-x: auto;
+            font-family: 'JetBrains Mono', 'Fira Code', monospace;
+            font-size: 0.9rem;
+            margin: 1.2rem 0;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+            border: 1px solid #334155;
+        }
+        .code-block code {
+            background: none;
+            color: #b9f3ff;
+            font-family: inherit;
+        }
+        pre {
+            margin: 0;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            font-size: 0.95rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        th {
+            background-color: #eef2ff;
+            color: #1e293b;
+            font-weight: 600;
+            padding: 12px 10px;
+            border: 1px solid #cbd5e1;
+            text-align: center;
+        }
+        td {
+            border: 1px solid #cbd5e1;
+            padding: 10px;
+            vertical-align: top;
+            background-color: #ffffff;
+        }
+        tr:nth-child(even) td {
+            background-color: #f8fafc;
+        }
+        .note {
+            background-color: #fef9e3;
+            border-left: 5px solid #eab308;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.75rem;
+            margin: 1.2rem 0;
+        }
+        .warning {
+            background-color: #fee2e2;
+            border-left: 5px solid #ef4444;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.75rem;
+        }
+        .info {
+            background-color: #e0f2fe;
+            border-left: 5px solid #0284c7;
+            padding: 0.8rem 1.2rem;
+            border-radius: 0.75rem;
+            margin: 1.2rem 0;
+        }
+        .inline-code {
+            background-color: #eef2ff;
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.4rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #b91c1c;
+        }
+        hr {
+            margin: 2rem 0;
+            border: none;
+            height: 2px;
+            background: linear-gradient(90deg, #cbd5e1, #94a3b8, #cbd5e1);
+        }
+        footer {
+            text-align: center;
+            margin-top: 2.5rem;
+            font-size: 0.85rem;
+            color: #475569;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 1.5rem;
+        }
+        ul, ol {
+            margin: 0.8rem 0 1rem 1.8rem;
+        }
+        li {
+            margin: 0.4rem 0;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Funciones definidas por el usuario (UDFs) <br> y Common Table Expressions (CTE)</h1>
+    <div class="subhead">MySQL · Bases de datos avanzadas · Optimización y buenas prácticas</div>
+
+    <!-- Sección: Funciones en MySQL -->
+    <h2>Funciones en MySQL</h2>
+    <p>Una <strong>función en MySQL</strong> es un bloque de código SQL que recibe cero o más argumentos, realiza operaciones y devuelve <strong>un único valor</strong>. Se invoca con <span class="inline-code">SELECT</span> o dentro de expresiones. Encapsulan lógica reutilizable.</p>
+
+    <h3>Tipos de funciones (objeto de estudio)</h3>
+    <ul>
+        <li><strong>Escalares (UDFs):</strong> Devuelven un único valor. Ejemplo: <span class="inline-code">calcular_descuento(precio)</span>.</li>
+        <li><strong>Agregadas:</strong> Operan sobre conjuntos de filas y devuelven un resumen: <span class="inline-code">SUM, AVG, MAX, MIN, COUNT</span>.</li>
+    </ul>
+
+    <h3>Funciones escalares – ejemplos comunes</h3>
+    <ul>
+        <li><strong>Matemáticas:</strong> <span class="inline-code">ABS(x)</span>, <span class="inline-code">ROUND(x,d)</span>, <span class="inline-code">SQRT(x)</span>.</li>
+        <li><strong>Cadenas:</strong> <span class="inline-code">UPPER(str)</span>, <span class="inline-code">LOWER(str)</span>, <span class="inline-code">CONCAT(str1, str2)</span>.</li>
+        <li><strong>Fecha:</strong> <span class="inline-code">NOW()</span>, <span class="inline-code">DATE_ADD(...)</span>, <span class="inline-code">YEAR(date)</span>.</li>
+    </ul>
+
+    <h3>Funciones agregadas</h3>
+    <p>Operan sobre varias filas y devuelven una sola fila resumen: <span class="inline-code">MAX()</span>, <span class="inline-code">MIN()</span>, <span class="inline-code">SUM()</span>, <span class="inline-code">AVG()</span>, <span class="inline-code">COUNT()</span>.</p>
+
+    <h4>Comparativa: Escalares vs Agregadas</h4>
+    <table>
+        <thead>
+            <tr><th>Característica</th><th>Funciones Escalares</th><th>Funciones Agregadas</th></tr>
+        </thead>
+        <tbody>
+            <tr><td>Operación</td><td>Sobre una sola fila</td><td>Sobre un conjunto de filas</td></tr>
+            <tr><td>Resultado</td><td>Un único valor</td><td>Un único valor que resume el conjunto</td></tr>
+            <tr><td>Uso típico</td><td>Cálculos, transformaciones</td><td>Resúmenes, estadísticas</td></tr>
+            <tr><td>Ejemplos</td><td>ABS, ROUND, UPPER, NOW</td><td>SUM, AVG, COUNT, MAX, MIN</td></tr>
+            <tr><td>Aplicación</td><td><span class="inline-code">SELECT ABS(columna) FROM tabla</span></td><td><span class="inline-code">SELECT SUM(columna) FROM tabla</span></td></tr>
+        </tbody>
+    </table>
+
+    <h2>Sintaxis básica de una UDF</h2>
+    <div class="code-block">
+        <pre><code>CREATE FUNCTION nombre_funcion(param1 tipo, param2 tipo, ...)
+RETURNS tipo_dato_retorno
+DETERMINISTIC
+BEGIN
+    -- lógica de la función
+    RETURN valor;
+END;</code></pre>
+    </div>
+
+    <h3>Ejemplo: Calcular descuento (UDF determinística)</h3>
+    <div class="code-block">
+        <pre><code>CREATE FUNCTION calcular_descuento(precio DECIMAL(7,2))
+RETURNS DECIMAL(7,2)
+DETERMINISTIC
+BEGIN
+    DECLARE descuento DECIMAL(7,2);
+    SET descuento = precio * 0.1;
+    RETURN precio - descuento;
+END;</code></pre>
+    </div>
+
+    <h2>Determinismo: DETERMINISTIC vs NO DETERMINISTIC</h2>
+    <div class="info">
+        <strong>Pregunta clave:</strong> Si una función recibe exactamente los mismos valores en sus parámetros, ¿es siempre determinística?<br>
+        <strong>Respuesta:</strong> Depende de lo que haga la función. Una función es <strong>determinística</strong> si, <strong>dados los mismos valores de entrada, produce siempre el mismo resultado</strong>, sin importar cuándo se ejecute ni el estado de otras tablas o variables del sistema. Por el contrario, una función es <strong>no determinística</strong> si, incluso con los mismos parámetros, puede devolver resultados diferentes (por ejemplo, si usa <span class="inline-code">NOW()</span>, <span class="inline-code">RAND()</span>, o consulta datos que pueden cambiar entre ejecuciones).
+    </div>
+    <p><strong>Función determinística:</strong> Ejemplo: <span class="inline-code">ABS(-5)</span> siempre devuelve 5. Una UDF que multiplica un precio por un porcentaje fijo, sin acceder a tablas ni funciones variables, también es determinística.</p>
+    <p><strong>Función no determinística:</strong> Ejemplo: <span class="inline-code">NOW()</span> devuelve la fecha y hora actual, que cambia en cada ejecución aunque no tenga parámetros. También una función que lea el saldo de una cuenta desde una tabla podría devolver valores distintos si la tabla se modifica entre llamadas.</p>
+    <div class="note">
+        <strong>Importancia del determinismo:</strong>
+        <ul>
+            <li>Optimización: el motor puede cachear resultados de funciones determinísticas.</li>
+            <li>Consistencia en replicación: MySQL necesita saber si una función es predecible para mantener la coherencia maestro-esclavo.</li>
+            <li>Buenas prácticas: si no se especifica <span class="inline-code">DETERMINISTIC</span> o <span class="inline-code">NOT DETERMINISTIC</span>, MySQL asume <strong>NO DETERMINISTIC</strong> por defecto, lo que puede impedir ciertas optimizaciones.</li>
+        </ul>
+        Para crear una función en MySQL se debe indicar al menos una de: <span class="inline-code">DETERMINISTIC</span>, <span class="inline-code">NO SQL</span> o <span class="inline-code">READS SQL DATA</span>.
+    </div>
+
+    <!-- Comparación Funciones vs Procedimientos -->
+    <h2>Comparación: Funciones (UDF) vs Procedimientos Almacenados (SP)</h2>
+    <table>
+        <thead><tr><th>Característica</th><th>Funciones</th><th>Procedimientos Almacenados</th></tr></thead>
+        <tbody>
+            <tr><td>Propósito principal</td><td>Calcular y devolver un valor</td><td>Realizar múltiples operaciones (DML, transacciones)</td></tr>
+            <tr><td>Uso en expresiones</td><td>Sí (SELECT, WHERE, HAVING)</td><td>No (se invoca con CALL)</td></tr>
+            <tr><td>Retorno de valor</td><td>Sí, un único valor</td><td>No directamente (parámetros OUT o conjuntos de resultados)</td></tr>
+            <tr><td>Sintaxis</td><td>CREATE FUNCTION ... RETURNS</td><td>CREATE PROCEDURE</td></tr>
+            <tr><td>Complejidad</td><td>Generalmente simple</td><td>Puede ser muy complejo</td></tr>
+        </tbody>
+    </table>
+
+    <h3>¿Cuándo usar una función?</h3>
+    <ul><li>Cálculos simples o validaciones.</li><li>Reutilización en expresiones SQL.</li><li>Cuando se necesita un único valor de retorno.</li></ul>
+    <h3>¿Cuándo usar un procedimiento almacenado?</h3>
+    <ul><li>Operaciones complejas (INSERT/UPDATE/DELETE en múltiples tablas).</li><li>Transacciones y control de flujo (IF, WHILE, bucles).</li><li>Procesos de negocio completos.</li></ul>
+
+    <h3>Ejemplo integrado: Función + Procedimiento</h3>
+    <div class="code-block">
+        <pre><code>-- Función que calcula precio final (determinística si los datos de ventas no cambian durante la consulta,
+-- pero en rigor, al leer de una tabla, MySQL la trataría como READS SQL DATA, no puramente determinística.
+-- Se muestra solo como ejemplo conceptual.
+CREATE FUNCTION calcular_precio_final(venta_id INT, descuento DECIMAL(7,2), impuesto DECIMAL(7,2))
+RETURNS DECIMAL(10,2)
+READS SQL DATA
+BEGIN
+    DECLARE subtotal DECIMAL(10,2);
+    SELECT precio * cantidad INTO subtotal FROM ventas WHERE venta_id = venta_id;
+    RETURN subtotal * (1 - descuento) * (1 + impuesto);
+END;
+
+-- Procedimiento que actualiza usando la función
+CREATE PROCEDURE actualizar_precio_final(venta_id INT, descuento DECIMAL(7,2), impuesto DECIMAL(7,2))
+BEGIN
+    UPDATE ventas 
+    SET precio = calcular_precio_final(venta_id, descuento, impuesto)
+    WHERE venta_id = venta_id;
+END;
+
+-- Llamada
+CALL actualizar_precio_final(10, 0.1, 0.21);</code></pre>
+    </div>
+
+    <div class="warning">
+        <strong>Restricción importante:</strong> En MySQL, las funciones definidas por el usuario <strong>no pueden realizar operaciones DML</strong> (INSERT, UPDATE, DELETE) directas sobre tablas. Están diseñadas para cálculos y lecturas de datos (con READS SQL DATA). Si se necesita modificar datos, se debe usar un procedimiento almacenado.
+    </div>
+
+    <h2>Otros tipos de funciones en MySQL (resumen)</h2>
+    <ul>
+        <li><strong>Ventana / Analíticas:</strong> ROW_NUMBER(), RANK(), SUM() OVER() — cálculos sobre particiones sin agrupar.</li>
+        <li><strong>JSON:</strong> JSON_EXTRACT(), JSON_ARRAYAGG(), JSON_OBJECT().</li>
+        <li><strong>Información:</strong> USER(), DATABASE(), VERSION().</li>
+        <li><strong>Control de flujo:</strong> IF(), CASE, COALESCE().</li>
+        <li><strong>Seguridad y cifrado:</strong> SHA2(), MD5().</li>
+        <li><strong>Espaciales (geométricas):</strong> ST_DISTANCE(), ST_CONTAINS().</li>
+    </ul>
+
+    <hr>
+
+    <!-- Sección CTE -->
+    <h2>Introducción a las CTE (Common Table Expressions)</h2>
+    <p>Una <strong>CTE</strong> es una tabla temporal definida dentro de una consulta, utilizando la cláusula <span class="inline-code">WITH</span>. Mejora la legibilidad y permite reutilizar subconsultas, además de soportar <strong>recursividad</strong>.</p>
+
+    <h3>Tipos de CTE</h3>
+    <ul>
+        <li><strong>CTE simples:</strong> definición temporal sin autoreferencia.</li>
+        <li><strong>CTE recursivas:</strong> se refieren a sí mismas, ideales para jerarquías (organigrama, árbol genealógico).</li>
+    </ul>
+
+    <h3>Sintaxis básica (CTE simple)</h3>
+    <div class="code-block">
+        <pre><code>WITH mi_cte AS (
+    SELECT columnas FROM tabla WHERE condicion
+)
+SELECT * FROM mi_cte;</code></pre>
+    </div>
+
+    <h3>Sintaxis CTE recursiva (ejemplo conceptual)</h3>
+    <div class="code-block">
+        <pre><code>WITH RECURSIVE nombre_cte AS (
+    -- ancla (punto de partida)
+    SELECT col1, col2 FROM tabla WHERE condicion_inicial
+    UNION ALL
+    -- parte recursiva
+    SELECT t.col1, t.col2 FROM tabla t
+    JOIN nombre_cte n ON t.parent_id = n.id
+)
+SELECT * FROM nombre_cte;</code></pre>
+    </div>
+
+    <h3>Ventajas de las CTE</h3>
+    <ul>
+        <li><strong>Legibilidad:</strong> dividen consultas complejas en bloques lógicos.</li>
+        <li><strong>Reutilización:</strong> la misma CTE puede referenciarse múltiples veces.</li>
+        <li><strong>Recursividad:</strong> esencial para datos jerárquicos.</li>
+    </ul>
+
+    <h3>Ejemplos prácticos de CTE</h3>
+    <p><strong>Ejemplo 1: Promedio de salarios > 3000</strong></p>
+    <div class="code-block">
+        <pre><code>WITH EmpleadosSalarios AS (
+    SELECT empleado_id, salario FROM Empleados WHERE salario > 3000
+)
+SELECT AVG(salario) AS PromedioSalario FROM EmpleadosSalarios;</code></pre>
+    </div>
+    <p><strong>Ejemplo 2: CTE con JOIN</strong></p>
+    <div class="code-block">
+        <pre><code>WITH EmpleadosDepartamentos AS (
+    SELECT e.empleado_id, e.nombre, d.nombre_departamento
+    FROM Empleados e
+    JOIN Departamentos d ON e.departamento_id = d.departamento_id
+)
+SELECT * FROM EmpleadosDepartamentos ORDER BY nombre_departamento;</code></pre>
+    </div>
+    <p><strong>Ejemplo 3: CTE Recursiva (jerarquía de empleados)</strong></p>
+    <div class="code-block">
+        <pre><code>WITH RECURSIVE jerarquia_empleados AS (
+    -- empleado raíz (sin jefe)
+    SELECT id, nombre, id_jefe FROM empleados WHERE id_jefe IS NULL
+    UNION ALL
+    SELECT e.id, e.nombre, e.id_jefe
+    FROM empleados e
+    JOIN jerarquia_empleados je ON e.id_jefe = je.id
+)
+SELECT * FROM jerarquia_empleados;</code></pre>
+    </div>
+
+    <!-- Diferencias Subconsultas vs CTE -->
+    <h2>Subconsultas vs CTE: tabla comparativa</h2>
+    <table>
+        <thead><tr><th>Característica</th><th>Subconsultas</th><th>CTE (Common Table Expressions)</th></tr></thead>
+        <tbody>
+            <tr><td>Definición</td><td>Consultas anidadas dentro de SELECT, FROM, WHERE</td><td>Bloques temporales referenciables con WITH</td></tr>
+            <tr><td>Sintaxis</td><td>Parte de la cláusula principal</td><td>Definida con WITH (puede ser recursiva)</td></tr>
+            <tr><td>Legibilidad</td><td>Puede ser compleja si hay anidación profunda</td><td>Mejora la legibilidad y organización</td></tr>
+            <tr><td>Reutilización</td><td>No puede ser reutilizada dentro de la misma consulta</td><td>Se puede referenciar varias veces en la misma consulta</td></tr>
+            <tr><td>Recursividad</td><td>No soporta recursividad</td><td>Sí soporta (RECURSIVE) para jerarquías</td></tr>
+            <tr><td>Compatibilidad</td><td>Todas las versiones de MySQL</td><td>Requiere MySQL 8.0 o superior</td></tr>
+        </tbody>
+    </table>
+
+    <h3>Ejemplo comparativo: cliente con mayor facturación</h3>
+    <p><strong>Subconsulta:</strong></p>
+    <div class="code-block">
+        <pre><code>SELECT cliente_id, nombre FROM clientes 
+WHERE cliente_id = (SELECT cliente_id FROM ventas 
+                    GROUP BY cliente_id 
+                    ORDER BY SUM(total) DESC LIMIT 1);</code></pre>
+    </div>
+    <p><strong>CTE equivalente:</strong></p>
+    <div class="code-block">
+        <pre><code>WITH ventas_totales AS (
+    SELECT cliente_id, SUM(total) AS total_ventas
+    FROM ventas GROUP BY cliente_id
+)
+SELECT c.cliente_id, c.nombre
+FROM clientes c
+JOIN ventas_totales v ON c.cliente_id = v.cliente_id
+ORDER BY v.total_ventas DESC LIMIT 1;</code></pre>
+    </div>
+
+    <div class="note">
+        <strong>Recomendación:</strong> Usa CTE cuando necesites legibilidad, reutilización de resultados intermedios o recursividad. Usa subconsultas para casos simples, compatibilidad con versiones antiguas o consultas muy cortas.
+    </div>
+
+    <hr>
+
+    <!-- Tabla resumen general -->
+    <h2>Tabla resumen: Relación entre UDF y otros objetos de base de datos</h2>
+    <table>
+        <thead>
+            <tr><th>Elemento</th><th>Relación con UDF</th><th>¿Qué puede hacer?</th><th>¿Qué NO puede hacer?</th></tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><strong>Funciones (UDF)</strong></td>
+                <td>Autónoma, invocable en SP, triggers, vistas, CTE</td>
+                <td>Devolver un valor, usarse en SELECT/WHERE, transformaciones</td>
+                <td>Operaciones DML (INSERT/UPDATE/DELETE), manejo transaccional, handlers</td>
+            </tr>
+            <tr>
+                <td><strong>Procedimientos (SP)</strong></td>
+                <td>Pueden invocar UDF para cálculos específicos</td>
+                <td>Ejecutar tareas complejas, DML, transacciones, cursores</td>
+                <td>No se invoca desde SELECT, no devuelve valor directamente como función</td>
+            </tr>
+            <tr>
+                <td><strong>Triggers</strong></td>
+                <td>Pueden usar UDF para lógica de cálculo</td>
+                <td>Responder automáticamente a eventos DML</td>
+                <td>No se invocan directamente, dependen de eventos de tabla</td>
+            </tr>
+            <tr>
+                <td><strong>Handlers</strong></td>
+                <td>Sin relación directa (exclusivos de SP/Triggers)</td>
+                <td>Manejar errores (NOT FOUND, EXIT) en cursores</td>
+                <td>No aplican en UDF, vistas ni CTE</td>
+            </tr>
+            <tr>
+                <td><strong>Vistas</strong></td>
+                <td>Pueden utilizar UDF dentro de su definición</td>
+                <td>Ofrecer abstracción, simplificar acceso a datos</td>
+                <td>No aceptan parámetros, no realizan DML directamente</td>
+            </tr>
+            <tr>
+                <td><strong>CTE</strong></td>
+                <td>Una UDF puede ser invocada dentro de una CTE</td>
+                <td>Crear subconsultas temporales reutilizables, jerarquías</td>
+                <td>No almacenan datos de forma permanente, solo existen durante la consulta</td>
+            </tr>
+            <tr>
+                <td><strong>Vistas Materializadas</strong></td>
+                <td>No directa, pero pueden basarse en lógica de UDF</td>
+                <td>Almacenar resultados de consulta, mejorar rendimiento</td>
+                <td>Requieren actualización manual o programada, no admiten actualización directa</td>
+            </tr>
+        </tbody>
+    </table>
+
+    <div class="info">
+        <strong>Conclusión final:</strong> Las funciones determinísticas mejoran el rendimiento y la previsibilidad del código. Las CTE, junto con las UDFs bien diseñadas, permiten escribir SQL moderno, mantenible y eficiente. Siempre especifica si una función es <span class="inline-code">DETERMINISTIC</span> o <span class="inline-code">NOT DETERMINISTIC</span> para ayudar al optimizador y a otros desarrolladores.
+    </div>
+
+    <footer>
+        TUP – UTN Bases de Datos II – 2º año – Plan 2024 | Material de estudio: UDFs y CTE en MySQL
+    </footer>
+</div>
+</body>
+</html>
