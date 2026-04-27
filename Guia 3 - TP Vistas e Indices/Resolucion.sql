@@ -76,3 +76,6 @@ FROM productos_electronicos pe
 JOIN Detalle_Pedido dp ON dp.producto_id = pe.producto_id
 WITH CASCADED CHECK OPTION;
 
+-- 8
+
+
