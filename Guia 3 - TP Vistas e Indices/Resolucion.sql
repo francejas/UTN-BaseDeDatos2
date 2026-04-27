@@ -77,5 +77,21 @@ JOIN Detalle_Pedido dp ON dp.producto_id = pe.producto_id
 WITH CASCADED CHECK OPTION;
 
 -- 8
+CREATE VIEW clientes_productos_favoritos AS
+SELECT 
+    CONCAT(c.nombre, ' ', c.apellido) AS nombre_completo, 
+    (
+        SELECT pr.nombre_producto 
+        FROM Pedidos p
+        JOIN Detalle_Pedido dp ON p.pedido_id = dp.pedido_id
+        JOIN Productos pr ON pr.producto_id = dp.producto_id
+        WHERE p.cliente_id = c.cliente_id 
+        GROUP BY pr.producto_id, pr.nombre_producto
+        ORDER BY SUM(dp.cantidad) DESC 
+        LIMIT 1
+    ) AS producto_favorito
+FROM Clientes c;
+
+-- 9 
 
 
