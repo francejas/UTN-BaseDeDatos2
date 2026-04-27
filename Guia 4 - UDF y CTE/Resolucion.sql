@@ -135,6 +135,60 @@ END //
 DELIMITER ;
 
 -- 8
+DELIMITER //
 
+CREATE FUNCTION clienteSinVentas(clienteID INT)
+RETURNS BOOLEAN
+DETERMINISTIC
+BEGIN
+RETURN NOT EXISTS (SELECT 1
+FROM Ventas
+WHERE cliente_id = clienteID);
+END;
+
+DELIMITER ;
+
+-- 9 
+
+DELIMITER //
+
+CREATE FUNCTION numeroDeVentas (p_cliente_id INT)
+RETURNS INT 
+DETERMINISTIC
+BEGIN
+    DECLARE cantidad INT;
     
+    SELECT COUNT(venta_id) INTO cantidad 
+    FROM Ventas 
+    WHERE cliente_id = p_cliente_id;
+    
+    RETURN cantidad;
+END //
+
+DELIMITER ;
+
+-- 10
+DELIMITER //
+
+CREATE FUNCTION nombreDepartamentoEmpleado (p_empleado_id INT)
+RETURNS VARCHAR(100)
+DETERMINISTIC
+BEGIN
+    DECLARE v_nombre_depto VARCHAR(100);
+    
+    -- Tu lógica de JOIN es perfecta para este caso
+    SELECT d.nombre_departamento INTO v_nombre_depto 
+    FROM Departamentos d 
+    JOIN Empleados e ON d.departamento_id = e.departamento_id
+    WHERE e.empleado_id = p_empleado_id;
+    
+    RETURN v_nombre_depto;
+END //
+
+DELIMITER ;
+
+-- 11
+
+
+
 
