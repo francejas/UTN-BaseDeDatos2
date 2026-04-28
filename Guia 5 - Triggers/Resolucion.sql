@@ -123,13 +123,85 @@ END$$
 DELIMITER ;
 
 -- 10
+DELIMITER $$
 
+CREATE TRIGGER trg_actualizarStockProducto
+AFTER INSERT ON DetallesPedido
+FOR EACH ROW 
+BEGIN
+	UPDATE Productos SET Stock=Stock-NEW.Cantidad
+    WHERE ProductoID=NEW.ProductoID;
+END$$
+
+DELIMITER ;
     
+-- 11
+DELIMITER $$
+
+CREATE TRIGGER trg_validarFormatoEmail
+BEFORE INSERT ON Clientes
+FOR EACH ROW
+BEGIN
+    IF NEW.Email NOT LIKE '%_@_%.%' THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Formato invalido';
+    END IF;
+END$$
+
+DELIMITER ;
     
-    
-    
-    
-    
+-- 12
+DELIMITER $$
+
+CREATE TRIGGER trg_auditInsercionProductos
+AFTER INSERT ON Productos
+FOR EACH ROW
+BEGIN
+	INSERT INTO AuditoriaProductos (ProductoID, NombreProducto, Precio, FechaInsercion)
+    VALUES (NEW.ProductoID, NEW.NombreProducto,NEW.Precio, NOW());
+END$$
+
+DELIMITER ;
+
+-- 13
+DELIMITER $$
+
+CREATE TRIGGER trg_auditActualizarProductos
+AFTER UPDATE ON Productos
+FOR EACH ROW
+BEGIN
+    INSERT INTO AuditoriaActualizacionProductos(ProductoID, NombreProductoAntiguo, NombreProductoNuevo, FechaActualizacion)
+    VALUES (OLD.ProductoID, OLD.NombreProducto, NEW.NombreProducto, NOW());
+END$$
+
+DELIMITER ;
+
+-- 14
+DELIMITER $$
+
+CREATE TRIGGER trg_auditEliminarProducto
+AFTER DELETE ON Productos
+FOR EACH ROW
+BEGIN
+    INSERT INTO AuditoriaEliminacionProductos (ProductoID, NombreProducto, FechaEliminacion)
+    VALUES (OLD.ProductoID, OLD.NombreProducto, NOW());
+END$$
+
+DELIMITER ;
+
+-- 15
+DELIMITER $$
+
+CREATE TRIGGER trg_actualizarStockProductos
+AFTER DELETE ON DetallesPedido
+FOR EACH ROW
+BEGIN
+	UPDATE Productos SET Stock=Stock + OLD.Cantidad
+    WHERE ProductoID=OLD.ProductoID;
+END$$
+
+DELIMITER ;
+
+
     
     
     
