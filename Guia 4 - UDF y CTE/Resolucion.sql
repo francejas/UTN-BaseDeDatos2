@@ -251,4 +251,21 @@ SELECT nombre, salario
 FROM TopEmpleados;
 
 -- 16
+WITH VentasPorMes AS (
+    SELECT 
+        YEAR(fecha_venta) AS anio_venta, 
+        MONTH(fecha_venta) AS mes_venta, 
+        SUM(valor) AS total_ventas
+    FROM Ventas
+    GROUP BY anio_venta, mes_venta
+)
+SELECT 
+    anio_venta,
+    mes_venta, 
+    total_ventas
+FROM VentasPorMes 
+WHERE total_ventas > 5000;
+
+-- 17
+
 
