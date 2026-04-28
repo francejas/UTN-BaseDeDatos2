@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triggers en MySQL - Guía completa (con correcciones y paso a paso)</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            background-color: #f4f7fc;
+            color: #1e2f3e;
+            line-height: 1.5;
+            padding: 2rem 1rem;
+        }
+        .container {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 28px;
+            box-shadow: 0 20px 35px -12px rgba(0,0,0,0.12);
+            padding: 2rem 2rem 3rem 2rem;
+        }
+        h1 {
+            font-size: 2.2rem;
+            border-left: 6px solid #0d6efd;
+            padding-left: 1.2rem;
+            margin-bottom: 1.2rem;
+            color: #0a2b44;
+        }
+        h2 {
+            font-size: 1.8rem;
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #e2e8f0;
+            color: #1e4668;
+        }
+        h3 {
+            font-size: 1.4rem;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            color: #2c5a7a;
+        }
+        p { margin-bottom: 1rem; }
+        ul, ol { margin: 1rem 0 1rem 1.8rem; }
+        li { margin-bottom: 0.3rem; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 1.5rem 0;
+            display: block;
+            overflow-x: auto;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 10px;
+            border: 1px solid #cbd5e1;
+            text-align: left;
+            vertical-align: top;
+        }
+        th { background-color: #eef2ff; color: #1e3a8a; }
+        pre {
+            background: #0f172a;
+            color: #e2e8f0;
+            padding: 1.2rem;
+            border-radius: 14px;
+            overflow-x: auto;
+            font-family: 'Fira Code', monospace;
+            font-size: 0.9rem;
+            margin: 1.2rem 0;
+        }
+        code {
+            font-family: 'Fira Code', monospace;
+            background-color: #f1f5f9;
+            color: #c2410c;
+            padding: 0.2rem 0.4rem;
+            border-radius: 8px;
+        }
+        pre code { background: transparent; color: inherit; padding: 0; }
+        .nota { background: #fef9e3; border-left: 5px solid #eab308; padding: 1rem; margin: 1.5rem 0; border-radius: 12px; }
+        .warning { background: #fee2e2; border-left: 5px solid #dc2626; padding: 1rem; margin: 1.5rem 0; border-radius: 12px; }
+        .info { background: #e6f7ff; border-left: 5px solid #0d6efd; padding: 1rem; margin: 1.5rem 0; border-radius: 12px; }
+        .buena-practica { background: #e0f2e9; border-left: 5px solid #2e7d64; padding: 1rem; margin: 1.5rem 0; border-radius: 12px; }
+        .ejemplo-destacado { background: #f8fafc; border-radius: 18px; padding: 0.8rem 1.4rem; margin: 1.8rem 0; border: 1px solid #cbd5e1; }
+        .badge { background: #e2e3e5; border-radius: 30px; padding: 0.2rem 0.6rem; font-size: 0.75rem; font-weight: 600; display: inline-block; }
+        hr { margin: 2rem 0; border: none; height: 1px; background: linear-gradient(90deg, #cbd5e1, transparent); }
+        .small-text { font-size: 0.85rem; color: #475569; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Triggers en MySQL (disparadores)</h1>
+    <p>Un <strong>trigger</strong> es un bloque de código SQL que se ejecuta automáticamente al ocurrir un evento <code>INSERT</code>, <code>UPDATE</code> o <code>DELETE</code> sobre una tabla. Son muy útiles para mantener la integridad de los datos, auditar cambios y automatizar reglas de negocio.</p>
+
+    <div class="info">
+        <strong>Disponibilidad histórica:</strong> Los triggers fueron introducidos en <strong>MySQL 5.0.2</strong> (año 2005) y su sintaxis sigue el estándar ANSI SQL:2003. <br>
+        <strong>Múltiples triggers por evento/momento:</strong> Desde <strong>MySQL 5.7.2</strong> es técnicamente posible tener más de un trigger para la misma combinación (ej. dos triggers BEFORE UPDATE), pero <strong>esto es una mala práctica</strong> (ver sección específica).
+    </div>
+
+    <h2>¿Qué es un Trigger? Tipos y sintaxis</h2>
+    <p>Un trigger se asocia a una tabla y se define para ejecutarse <strong>antes (BEFORE)</strong> o <strong>después (AFTER)</strong> de un evento <code>INSERT</code>, <code>UPDATE</code> o <code>DELETE</code>.</p>
+    <pre><code>CREATE TRIGGER nombre_trigger
+{BEFORE | AFTER} {INSERT | UPDATE | DELETE}
+ON nombre_tabla
+FOR EACH ROW
+BEGIN
+    -- instrucciones SQL
+END;</code></pre>
+    <p><code>FOR EACH ROW</code> es obligatorio. Significa que el trigger se ejecutará <strong>una vez por cada fila afectada</strong> por la sentencia DML. No existe en MySQL el nivel <code>FOR EACH STATEMENT</code> (por sentencia).</p>
+
+    <div class="nota">
+        <strong>¿Recorre todos los registros de la tabla?</strong> No. Solo las filas que realmente se ven afectadas por la operación (las que cumplan la condición WHERE, o todas si no hay filtro). El motor itera directamente sobre esas filas <strong>sin construir un record set temporal completo</strong> (como un cursor). Solo en situaciones complejas (el trigger lee o modifica la misma tabla de forma conflictiva) puede usar una tabla temporal interna.
+    </div>
+
+    <h2>Usos principales de los triggers (Auditoría, Validación, Automatización)</h2>
+    <p>Desde los inicios, los triggers se han usado para tres propósitos fundamentales. A continuación se detallan con ejemplos conceptuales:</p>
+    <ul>
+        <li><strong>Auditoría:</strong> Registrar cambios en una tabla de historial sin modificar los datos originales. Ej: un trigger AFTER UPDATE que inserta en `auditoria_productos` los valores antiguos y nuevos.</li>
+        <li><strong>Validación:</strong> Asegurar que los datos cumplan reglas de negocio antes de ser insertados o actualizados. Ej: un trigger BEFORE INSERT que verifique que el precio no sea negativo, y si lo es, lanza un SIGNAL.</li>
+        <li><strong>Automatización:</strong> Realizar cálculos o actualizaciones automáticas basadas en cambios. Ej: el trigger BEFORE UPDATE que duplica el precio cuando cambia el costo.</li>
+    </ul>
+    <p>Estos usos se pueden combinar, pero es importante no mezclar lógica que pueda causar efectos secundarios no deseados. La sección <strong>"Automatización vs Auditoría"</strong> más abajo muestra dos triggers distintos sobre la misma tabla para que veas la diferencia.</p>
+
+    <h2>Ejemplo clásico: automatización de precio (BEFORE UPDATE)</h2>
+    <p>Tabla <code>productos</code> y trigger que actualiza el precio automáticamente cuando el costo cambia.</p>
+    <pre><code>CREATE TABLE productos (
+    id INT PRIMARY KEY,
+    nombre VARCHAR(100),
+    costo DECIMAL(10,2),
+    precio DECIMAL(10,2),
+    proveedor_id INT
+);
+
+DELIMITER $$
+CREATE TRIGGER actualizarPrecioProducto
+BEFORE UPDATE ON productos
+FOR EACH ROW
+BEGIN
+    IF NEW.costo <> OLD.costo THEN
+        SET NEW.precio = NEW.costo * 2;
+    END IF;
+END$$
+DELIMITER ;</code></pre>
+
+    <h3>Visualización paso a paso (aclaración sobre el momento de ejecución)</h3>
+    <p><strong>Importante:</strong> Cuando ejecutamos <code>UPDATE productos SET costo = costo * 1.10 WHERE proveedor_id = 1;</code>, el motor:</p>
+    <ol>
+        <li><strong>Calcula en memoria</strong> el nuevo valor de <code>costo</code> para cada fila afectada (ej: 50 → 55).</li>
+        <li><strong>Antes de escribir cualquier cambio en la tabla</strong>, ejecuta el trigger <code>BEFORE UPDATE</code> para esa fila. Dentro del trigger, <code>OLD</code> contiene los valores actuales (aún intactos en la tabla) y <code>NEW</code> contiene los valores calculados (aún no escritos).</li>
+        <li>El trigger puede modificar <code>NEW.precio</code>.</li>
+        <li>Una vez que el trigger termina, se <strong>escribe la fila completa</strong> con los valores finales de <code>NEW</code>.</li>
+    </ol>
+
+    <h3>Tabla de evolución paso a paso (fila por fila)</h3>
+    <p>Partimos de los siguientes registros iniciales:</p>
+    <table>
+        <thead><tr><th>id</th><th>nombre</th><th>costo</th><th>precio</th><th>proveedor_id</th></tr></thead>
+        <tbody>
+            <tr><td>1</td><td>Teclado RGB</td><td>50.00</td><td>100.00</td><td>1</td></tr>
+            <tr><td>2</td><td>Mouse inalámbrico</td><td>30.00</td><td>60.00</td><td>1</td></tr>
+            <tr><td>3</td><td>Monitor 24"</td><td>200.00</td><td>400.00</td><td>2</td></tr>
+        </tbody>
+    </table>
+
+    <p><strong>Ejecutamos:</strong> <code>UPDATE productos SET costo = costo * 1.10 WHERE proveedor_id = 1;</code> (afecta id=1 y id=2).</p>
+
+    <table>
+        <caption><strong>Iteración 1 - Fila id=1 (Teclado RGB)</strong></caption>
+        <thead><tr><th>Momentos</th><th>costo</th><th>precio</th><th>Acción</th></tr></thead>
+        <tbody>
+            <tr><td>OLD (valor actual en tabla)</td><td>50.00</td><td>100.00</td><td></td></tr>
+            <tr><td>NEW calculado por la sentencia (antes del trigger)</td><td>55.00 (50*1.10)</td><td>100.00</td><td></td></tr>
+            <tr><td>Dentro del trigger: IF 55.00 &lt;&gt; 50.00 -> verdadero</td><td></td><td></td><td>SET NEW.precio = 55.00 * 2 = 110.00</td></tr>
+            <tr><td>NEW final (después del trigger, se escribe)</td><td>55.00</td><td>110.00</td><td>✓</td></tr>
+        </tbody>
+    </table>
+
+    <table>
+        <caption><strong>Iteración 2 - Fila id=2 (Mouse inalámbrico)</strong></caption>
+        <thead><tr><th>Momentos</th><th>costo</th><th>precio</th><th>Acción</th></tr></thead>
+        <tbody>
+            <tr><td>OLD (valor actual en tabla)</td><td>30.00</td><td>60.00</td><td></td></tr>
+            <tr><td>NEW calculado por la sentencia (antes del trigger)</td><td>33.00 (30*1.10)</td><td>60.00</td><td></td></tr>
+            <tr><td>Dentro del trigger: IF 33.00 &lt;&gt; 30.00 -> verdadero</td><td></td><td></td><td>SET NEW.precio = 33.00 * 2 = 66.00</td></tr>
+            <tr><td>NEW final (después del trigger, se escribe)</td><td>33.00</td><td>66.00</td><td>✓</td></tr>
+        </tbody>
+    </table>
+
+    <p><strong>Tabla productos después del UPDATE (estado final):</strong></p>
+    <table>
+        <thead><tr><th>id</th><th>nombre</th><th>costo</th><th>precio</th><th>proveedor_id</th></tr></thead>
+        <tbody>
+            <tr><td>1</td><td>Teclado RGB</td><td>55.00</td><td>110.00</td><td>1</td></tr>
+            <tr><td>2</td><td>Mouse inalámbrico</td><td>33.00</td><td>66.00</td><td>1</td></tr>
+            <tr><td>3</td><td>Monitor 24"</td><td>200.00</td><td>400.00</td><td>2</td></tr>
+        </tbody>
+    </table>
+    <div class="nota">Nota: El precio del mouse pasó de 60.00 a 66.00 (corregido, no 606.00).</div>
+
+    <h2>NEW y OLD en profundidad</h2>
+    <ul>
+        <li><strong>NEW:</strong> Disponible en INSERT y UPDATE. Contiene los nuevos valores que se van a insertar o actualizar. Se puede modificar solo en triggers BEFORE.</li>
+        <li><strong>OLD:</strong> Disponible en UPDATE y DELETE. Contiene los valores antiguos (antes del cambio o los que se eliminan). Es de solo lectura.</li>
+    </ul>
+    <p>En <code>INSERT</code>, OLD no existe. En <code>DELETE</code>, NEW no existe.</p>
+
+    <h2>Casos donde no necesitamos usar NEW u OLD (ejemplos del PDF original)</h2>
+    <p>Existen situaciones donde el trigger no requiere acceder a los valores específicos de la fila, sino solo a la operación en sí.</p>
+
+    <div class="ejemplo-destacado">
+        <p><strong>Ejemplo 1: Trigger AFTER INSERT sin usar NEW</strong> (solo auditoría de operación)</p>
+        <pre><code>CREATE TRIGGER after_insert_log
+AFTER INSERT ON tablita
+FOR EACH ROW
+BEGIN
+    INSERT INTO log_auditoria (accion_ejecutada, nombre_tabla, fecha_hora)
+    VALUES ('INSERT', 'tablita', NOW());
+END;</code></pre>
+        <p>No necesitamos NEW porque solo registramos que ocurrió una inserción, no los datos insertados.</p>
+    </div>
+
+    <div class="ejemplo-destacado">
+        <p><strong>Ejemplo 2: Trigger BEFORE DELETE sin usar OLD</strong> (limpieza genérica)</p>
+        <pre><code>CREATE TRIGGER before_delete_limpieza
+BEFORE DELETE ON pedidos
+FOR EACH ROW
+BEGIN
+    DELETE FROM detalle_pedido WHERE id_pedido = OLD.id_pedido;
+END;</code></pre>
+        <p>Aquí sí se usa OLD, pero el PDF menciona que podría no necesitarse si la limpieza no depende del valor, por ejemplo eliminando registros más antiguos que una fecha fija.</p>
+    </div>
+
+    <div class="ejemplo-destacado">
+        <p><strong>Ejemplo 3: Trigger AFTER DELETE que borra registros en otra tabla</strong></p>
+        <pre><code>CREATE TRIGGER after_delete_cleanup
+AFTER DELETE ON employees
+FOR EACH ROW
+BEGIN
+    DELETE FROM employee_history WHERE employee_id = OLD.employee_id;
+END;</code></pre>
+        <p>Igual que antes, se usa OLD para identificar la relación.</p>
+    </div>
+
+    <h2>Disponibilidad de NEW y OLD según la operación</h2>
+    <ul>
+        <li><strong>INSERT:</strong> Solo NEW disponible.</li>
+        <li><strong>UPDATE:</strong> Tanto NEW como OLD disponibles.</li>
+        <li><strong>DELETE:</strong> Solo OLD disponible.</li>
+    </ul>
+    <p><strong>¿Son tablas o CTEs?</strong> No. NEW y OLD son referencias temporales a los datos de una fila específica durante la ejecución del trigger. No existen físicamente, no ocupan espacio, y no se pueden consultar fuera del trigger.</p>
+
+    <h2>Qué SÍ y qué NO se puede hacer dentro de un trigger (tabla ampliada)</h2>
+    <div style="overflow-x: auto;">
+    <table>
+        <thead><tr><th>Categoría</th><th>Capacidad / Restricción</th><th>¿Permitido?</th><th>Notas / Versión</th></tr></thead>
+        <tbody>
+            <tr><td rowspan="3">Objetos objetivo</td><td>Tablas regulares (InnoDB, MyISAM)</td><td>SÍ</td><td>Puede leer/modificar cualquier tabla, incluso de otras bases de datos (cross-database: `otra_bd.tabla`).</td></tr>
+            <tr><td>Tablas del sistema (`mysql`, `information_schema`)</td><td>NO</td><td>No se puede asociar un trigger a una tabla del sistema.</td></tr>
+            <tr><td>Tablas temporales</td><td>NO</td><td>No se puede crear un trigger sobre una tabla temporal.</td></tr>
+            <tr><td rowspan="2">DML en otras tablas</td><td>INSERT/UPDATE/DELETE en otras tablas</td><td>SÍ</td><td>Válido para auditoría o cascada.</td></tr>
+            <tr><td>Modificar la misma tabla que disparó el trigger (excepto vía NEW)</td><td>NO</td><td>`UPDATE productos SET ...` (sin usar NEW) da error: la tabla ya está en uso.</td></tr>
+            <tr><td rowspan="2">Transacciones</td><td>COMMIT / ROLLBACK explícitos</td><td>NO</td><td>Prohibido iniciar o finalizar transacciones dentro del trigger.</td></tr>
+            <tr><td>Ser alcanzado por ROLLBACK externo</td><td>SÍ</td><td>Si la sentencia DML falla (o se usa SIGNAL), los cambios del trigger se revierten.</td></tr>
+            <tr><td rowspan="2">Manejo de errores</td><td>Definir HANDLERs (CONTINUE/EXIT)</td><td>SÍ</td><td>Siempre disponible (desde MySQL 5.0).</td></tr>
+            <tr><td>Usar SIGNAL / RESIGNAL</td><td>SÍ</td><td>Desde MySQL 5.5.</td></tr>
+            <tr><td>Control de flujo</td><td>IF, CASE, LOOP, WHILE, REPEAT, LEAVE</td><td>SÍ</td><td>Todas las estructuras de stored procedures.</td></tr>
+            <tr><td rowspan="2">Cursores</td><td>Cursores explícitos (DECLARE CURSOR, FETCH)</td><td>SÍ</td><td>Se puede recorrer un conjunto de resultados.</td></tr>
+            <tr><td>FOR EACH STATEMENT</td><td>NO</td><td>MySQL solo soporta nivel fila.</td></tr>
+            <tr><td rowspan="4">Lenguaje</td><td>Variables locales (DECLARE)</td><td>SÍ</td><td>Ámbito dentro del bloque.</td></tr>
+            <tr><td>Variables de usuario (@var)</td><td>SÍ</td><td>Pueden comunicar valores después de la ejecución.</td></tr>
+            <tr><td>Prepared Statements (SQL dinámico)</td><td>NO</td><td>PREPARE, EXECUTE no permitidos.</td></tr>
+            <tr><td>Devolver resultados al cliente (SELECT)</td><td>NO</td><td>No puede retornar conjuntos de filas. Alternativa: usar variables de sesión o tablas de log.</td></tr>
+            <tr><td>Modularidad</td><td>Llamar a Stored Procedures (CALL)</td><td>SÍ</td><td>El SP no debe devolver resultados al cliente ni usar instrucciones prohibidas.</td></tr>
+            <tr><td>DDL</td><td>CREATE, ALTER, DROP</td><td>NO</td><td>No se permite modificar la estructura de objetos.</td></tr>
+        </tbody>
+    </table>
+    </div>
+
+    <div class="warning">
+        <strong>¿Cómo devuelve datos un trigger? No puede directamente.</strong> Un trigger no está diseñado para comunicarse con el cliente. Si necesita informar algo (por ejemplo, "se actualizaron 5 filas"), use variables de sesión (<code>SET @resultado = '...';</code>) que luego el cliente lea, o escriba en una tabla de logs. No intente usar <code>SELECT</code> para mostrar resultados porque generará un error.
+    </div>
+
+    <h2>Automatización vs Auditoría (dos triggers sobre la misma tabla)</h2>
+    <p>Ejemplo con tabla <code>pedidos</code> y campo <code>estado</code>:</p>
+    <pre><code>CREATE TABLE pedidos (
+    id INT PRIMARY KEY,
+    cliente VARCHAR(100),
+    estado VARCHAR(20),
+    fecha_entrega DATE
+);
+CREATE TABLE auditoria_pedidos (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    pedido_id INT,
+    estado_anterior VARCHAR(20),
+    estado_nuevo VARCHAR(20),
+    usuario VARCHAR(50),
+    fecha_cambio TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);</code></pre>
+    <div class="ejemplo-destacado">
+        <p><strong>Automatización (activo):</strong> BEFORE UPDATE que asigna fecha_entrega automáticamente.</p>
+        <pre><code>CREATE TRIGGER auto_fecha_entrega
+BEFORE UPDATE ON pedidos FOR EACH ROW
+BEGIN
+    IF NEW.estado = 'enviado' AND OLD.estado != 'enviado' THEN
+        SET NEW.fecha_entrega = CURDATE();
+    END IF;
+END;</code></pre>
+    </div>
+    <div class="ejemplo-destacado">
+        <p><strong>Auditoría (pasivo):</strong> AFTER UPDATE que registra el cambio en otra tabla.</p>
+        <pre><code>CREATE TRIGGER audit_estado_pedido
+AFTER UPDATE ON pedidos FOR EACH ROW
+BEGIN
+    INSERT INTO auditoria_pedidos (pedido_id, estado_anterior, estado_nuevo, usuario)
+    VALUES (NEW.id, OLD.estado, NEW.estado, USER());
+END;</code></pre>
+    </div>
+
+    <h2>Múltiples triggers para el mismo evento: mala práctica</h2>
+    <div class="warning">
+        <strong>Aunque MySQL permite múltiples triggers del mismo tipo desde 5.7.2, es una MALA PRÁCTICA.</strong>
+    </div>
+    <ul>
+        <li>Orden de ejecución no garantizado (incluso con FOLLOWS/PRECEDES).</li>
+        <li>Fragiliza el mantenimiento y la depuración.</li>
+        <li>Usa un único trigger por evento/momento y centraliza la lógica.</li>
+    </ul>
+
+    <h2>Consideraciones de rendimiento y limitaciones adicionales</h2>
+    <ul>
+        <li><strong>Solo nivel fila:</strong> Actualizar 10.000 filas ejecuta el trigger 10.000 veces. Cuidado con operaciones masivas.</li>
+        <li><strong>No se puede modificar un trigger directamente:</strong> Hay que hacer DROP y CREATE (no existe ALTER TRIGGER).</li>
+        <li><strong>Depuración compleja:</strong> Los errores se reportan como si vinieran de la sentencia DML.</li>
+        <li><strong>Recursividad potencial:</strong> Puede controlarse con <code>max_sp_recursion_depth</code>.</li>
+        <li><strong>Caché de definición:</strong> Si se altera una tabla referenciada, puede requerirse <code>FLUSH TABLES</code> o reinicio.</li>
+        <li><strong>Permisos:</strong> Se necesita el privilegio TRIGGER sobre la tabla.</li>
+    </ul>
+
+    <h2>Administración y consulta de triggers</h2>
+    <pre><code>-- Ver todos los triggers de la BD actual
+SHOW TRIGGERS;
+
+-- Ver triggers de una BD específica
+SHOW TRIGGERS FROM nombre_base_datos;
+
+-- Ver triggers de una tabla específica
+SHOW TRIGGERS FROM tienda WHERE `Table` = 'productos';
+
+-- Consultar usando INFORMATION_SCHEMA (más potente)
+SELECT TRIGGER_NAME, EVENT_MANIPULATION, EVENT_OBJECT_TABLE, ACTION_TIMING, ACTION_STATEMENT
+FROM INFORMATION_SCHEMA.TRIGGERS
+WHERE TRIGGER_SCHEMA = 'nombre_base_datos';
+
+-- Eliminar trigger
+DROP TRIGGER IF EXISTS nombre_trigger;</code></pre>
+    <p>El comando <code>SHOW TRIGGERS</code> devuelve columnas como: Trigger, Event, Table, Statement, Timing, Created, definer, etc.</p>
+
+    <h2>Preguntas frecuentes (FAQ)</h2>
+    <div class="info">
+        <p><strong>¿Puedo tener dos triggers BEFORE UPDATE en la misma tabla?</strong> Técnicamente sí desde 5.7.2, pero es mala práctica. Use uno solo.</p>
+        <p><strong>¿Los triggers funcionan con INSERT ... ON DUPLICATE KEY UPDATE?</strong> Sí: si es INSERT, dispara triggers de INSERT; si es UPDATE, dispara triggers de UPDATE.</p>
+        <p><strong>¿Se puede leer el valor autoincremental en BEFORE INSERT?</strong> No, NEW.id vale 0 o NULL. Usar AFTER INSERT.</p>
+        <p><strong>¿Cómo hago para que un trigger revierta la operación sin error?</strong> No se puede directamente. Use SIGNAL para abortar con error.</p>
+        <p><strong>¿Un trigger puede actualizar otra tabla y esa tabla a su vez tener un trigger?</strong> Sí, puede haber cascada de triggers.</p>
+    </div>
+
+    <hr>
+    <p class="small-text">Documento completo basado en MySQL 8.0. Incluye todos los conceptos del material original: definición, tipos BEFORE/AFTER, sintaxis, ejemplo, NEW/OLD, usos (auditoría, validación, automatización), ejemplos visuales paso a paso (con tablas de evolución), casos sin NEW/OLD, disponibilidad por operación, tabla de capacidades, limitaciones, administración y preguntas frecuentes. Corregido el error del precio del mouse (66.00).</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,9 @@
+créate table AuditoriaClientes (
+    AuditoriaID INT PRIMARY KEY AUTO_INCREMENT,
+    ClienteID INT,
+    Nombre VARCHAR(50),
+    Apellido VARCHAR(50),
+    Email VARCHAR(100),
+    Telefono VARCHAR(15),
+    FechaInsercion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
