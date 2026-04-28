@@ -296,3 +296,15 @@ WITH RECURSIVE JerarquiaDepartamental AS (
 SELECT * FROM JerarquiaDepartamental
 ORDER BY Nivel, departamento_id;
 
+-- 18
+WITH ClientesDuplicados AS (
+    SELECT c.nombre, c.apellido, COUNT(*) AS total_duplicados
+    FROM Clientes c
+    GROUP BY c.nombre, c.apellido
+    HAVING total_duplicados > 1
+)
+SELECT 
+    nombre, 
+    apellido, 
+    total_duplicados 
+FROM ClientesDuplicados;
