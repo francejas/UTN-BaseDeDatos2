@@ -188,7 +188,56 @@ END //
 DELIMITER ;
 
 -- 11
+WITH VentasAltas AS (
+
+SELECT * FROM ventas WHERE valor>1000
+
+)
+
+SELECT COUNT(venta_id) AS cantidad_ventas, AVG(valor) FROM VentasAltas;
+
+-- 12
+WITH PromedioDepartamento AS (
+    SELECT 
+        departamento_id, 
+        AVG(salario) AS salario_promedio 
+    FROM Empleados 
+    GROUP BY departamento_id
+)
+SELECT departamento_id 
+FROM PromedioDepartamento 
+WHERE salario_promedio > 4000; 
 
 
+-- 13
+WITH AntiguedadEmpleados AS (
+SELECT
+empleado_id,
+nombre,
+DATEDIFF(CURDATE(), fecha_contratacion) AS DiasEnEmpresa
+FROM Empleados
+)
+SELECT
+empleado_id,
+nombre,
+DiasEnEmpresa
+FROM AntiguedadEmpleados
+WHERE DiasEnEmpresa > 5 * 365; 
 
+-- 14
+WITH VentasClientes AS (
+    SELECT c.cliente_id, c.nombre, c.apellido, v.fecha_venta
+    FROM clientes c
+    JOIN ventas v ON c.cliente_id = v.cliente_id
+    WHERE YEAR(v.fecha_venta) = YEAR(CURDATE())
+)
+SELECT 
+    cliente_id, 
+    nombre, 
+    apellido, 
+    COUNT(*) AS total_compras
+FROM VentasClientes
+GROUP BY cliente_id, nombre, apellido
+HAVING total_compras > 3;
 
+-- 15
