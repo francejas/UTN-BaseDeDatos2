@@ -308,3 +308,37 @@ SELECT
     apellido, 
     total_duplicados 
 FROM ClientesDuplicados;
+
+-- 19
+WITH TotalVentasPorCliente AS (
+    -- 1. Calculamos el total de cada uno
+    SELECT 
+        c.nombre, 
+        c.apellido, 
+        SUM(v.valor) AS total_gastado
+    FROM clientes c
+    JOIN ventas v ON c.cliente_id = v.cliente_id
+    GROUP BY c.cliente_id, c.nombre, c.apellido 
+),
+ClientesSuperiores AS (
+    SELECT nombre, apellido, total_gastado
+    FROM TotalVentasPorCliente
+    WHERE total_gastado > 10000
+)
+
+SELECT * FROM ClientesSuperiores;
+
+-- 20
+WITH VentasUltimoMes AS (
+    -- Filtramos trayendo las ventas que ocurrieron hace un mes o menos
+    SELECT cliente_id, valor 
+    FROM Ventas 
+    WHERE fecha_venta >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+)
+SELECT 
+    c.nombre, 
+    c.apellido, 
+    SUM(v.valor) AS total_gastado 
+FROM VentasUltimoMes v 
+JOIN Clientes c ON v.cliente_id = c.cliente_id
+GROUP BY c.cliente_id, c.nombre, c.apellido;
