@@ -241,3 +241,14 @@ GROUP BY cliente_id, nombre, apellido
 HAVING total_compras > 3;
 
 -- 15
+WITH TopEmpleados AS (
+    SELECT nombre, salario 
+    FROM Empleados 
+    ORDER BY salario DESC 
+    LIMIT 10
+)
+SELECT nombre, salario 
+FROM TopEmpleados;
+
+-- 16
+
