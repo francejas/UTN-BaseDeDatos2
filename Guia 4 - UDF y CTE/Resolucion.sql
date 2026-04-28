@@ -267,5 +267,32 @@ FROM VentasPorMes
 WHERE total_ventas > 5000;
 
 -- 17
-
+WITH RECURSIVE JerarquiaDepartamental AS (
+    -- PARTE 1: EL CASO BASE (El inicio de la cadena)
+    -- Buscamos al departamento raíz (el que no tiene jefe)
+    SELECT 
+        departamento_id, 
+        nombre_departamento, 
+        jefe_id, 
+        1 AS Nivel -- Arrancamos en el Nivel 1
+    FROM Departamentos
+    WHERE jefe_id IS NULL
+    
+    UNION ALL -- EL PEGAMENTO
+    
+    -- PARTE 2: LA RECURSIÓN (El bucle)
+    -- Buscamos quiénes están abajo del departamento anterior
+    SELECT 
+        d.departamento_id, 
+        d.nombre_departamento, 
+        d.jefe_id, 
+        jd.Nivel + 1 -- Le sumamos 1 al nivel en cada vuelta
+    FROM Departamentos d
+    -- ¡Acá está el truco! Hacemos JOIN con nuestra propia CTE (jd)
+    JOIN JerarquiaDepartamental jd ON d.jefe_id = jd.departamento_id
+)
+-- PARTE 3: LA CONSULTA PRINCIPAL
+-- Mostramos el árbol terminado, ordenado por nivel jerárquico
+SELECT * FROM JerarquiaDepartamental
+ORDER BY Nivel, departamento_id;
 
