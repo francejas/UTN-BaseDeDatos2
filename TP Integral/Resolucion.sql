@@ -288,5 +288,39 @@ END//
 DELIMITER ;
 
 -- 5
+DELIMITER //
 
+CREATE PROCEDURE aplicarDescuentoCategoria (
+	IN p_categoria VARCHAR(50)
+)
+BEGIN
+	DECLARE v_msj_error VARCHAR(200);
+	DECLARE EXIT HANDLER FOR SQLSTATE '45000'
+		BEGIN
+			INSERT INTO Auditoria_Errores (procedimiento, operacion, mensaje_error, fecha_error)
+            VALUES ('aplicarDescuentoCategoria','Aplicar descuento',v_msj_error, NOW());
+			SELECT v_msj_error AS msj_error;
+		END;
+	DECLARE EXIT HANDLER FOR SQLEXCEPTION
+		BEGIN
+			SET v_msj_error = 'Error inesperado en la base de datos.';
+			INSERT INTO Auditoria_Errores (procedimiento, operacion, mensaje_error, fecha_error)
+            VALUES ('aplicarDescuentoCategoria','Aplicar descuento',v_msj_error, NOW());
+            SELECT v_msj_error AS msj_error;
+            RESIGNAL;
+		END;
+	
+    IF NOT EXISTS (SELECT 1 FROM Productos WHERE categoria=p_categoria) THEN
+		SET v_msj_error = CONCAT('La categoria: ',p_categoria,' no existe.');
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msj_error;
+	ELSE
+		UPDATE Productos SET precio=calcularNuevoPrecio (precio, -10) WHERE categoria=p_categoria;
+        INSERT INTO Auditoria_Operaciones (categoria, fecha_operacion, cantidad_productos_actualizados)
+        VALUES (p_categoria, NOW(), ROW_COUNT());
+        SELECT 'Operacion exitosa.' AS msj;
+	END IF;
+END //
+
+DELIMITER ;
+			
 
