@@ -322,5 +322,53 @@ BEGIN
 END //
 
 DELIMITER ;
-			
 
+-- 6
+DELIMITER //
+
+CREATE PROCEDURE consultarStockProducto (
+	IN p_producto_id INT
+)
+BEGIN
+	DECLARE v_stock_actual INT;
+    DECLARE v_nombre_producto VARCHAR (100);
+    DECLARE v_msj_error VARCHAR(200);
+    DECLARE EXIT HANDLER FOR NOT FOUND
+    BEGIN
+		SET v_msj_error = 'Producto no encontrado.';
+		INSERT INTO Auditoria_Errores (procedimiento, operacion, mensaje_error, fecha_error)
+        VALUES ('consultarStockProducto','Consultar Stock del producto',v_msj_error, NOW());
+        SELECT v_msj_error AS msj_error;
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = v_msj_error;
+	END;
+    DECLARE EXIT HANDLER FOR SQLEXCEPTION
+    BEGIN
+		SET v_msj_error = 'Error inesperado.';
+		INSERT INTO Auditoria_Errores (procedimiento, operacion, mensaje_error, fecha_error)
+        VALUES ('consultarStockProducto','Consultar Stock del producto',v_msj_error, NOW());
+		SELECT v_msj_error AS msj_error;
+        RESIGNAL;
+	END;
+    SELECT nombre_producto, stock INTO v_nombre_producto, v_stock_actual FROM Productos WHERE producto_id = p_producto_id;
+    SELECT v_nombre_producto AS nombre_producto, v_stock_actual AS stock_actual;
+    IF v_stock_actual < 5 THEN
+		CALL notificarStockBajo(p_producto_id,v_stock_actual );
+	END IF;
+    
+    
+END//
+
+DELIMITER ;
+
+DELIMITER //
+
+CREATE PROCEDURE notificarStockBajo (
+	IN p_producto_id INT,
+    IN p_stock_actual INT
+)
+BEGIN
+		INSERT INTO Alertas_Stock (producto_id, stock_actual, fecha_alerta)
+        VALUES (p_producto_id, p_stock_actual, NOW());
+END//
+
+DELIMITER ;
